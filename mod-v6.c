@@ -1,3 +1,6 @@
+//CS 4348.005 - Project Group 18
+//Adham Kassem, Dhruv Thoutireddy, Basma Mahamid
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -16,6 +19,8 @@
 #define MAX_FILE_SIZE 4194304 // 4GB of file size
 #define FREE_ARRAY_SIZE 200 // free and inode array size
 
+//=================================SUPER BLOCK
+
 typedef struct {
     unsigned int isize; // 4 byte
     unsigned int fsize;
@@ -29,6 +34,8 @@ typedef struct {
     unsigned int time[2];
 } super_block;
 
+//====================================INODE
+
 typedef struct {
     unsigned short flags; // 2 bytes
     char nlinks;  // 1 byte
@@ -39,6 +46,8 @@ typedef struct {
     unsigned int actime;
     unsigned int modtime;
 } Inode;
+
+//===================================DIRECTORY ENTRY
 
 typedef struct
 {
@@ -63,7 +72,7 @@ int open_fs(char *file_name){
     else{
         return 1;
     }
-}
+}//open_fs - open file through filename char array
 
 // Function to write inode
 void inode_writer(int inum, inode_type inode){
@@ -116,7 +125,7 @@ int add_free_block(int bNumber){
     return pass;
 }
 
-void createRootDirectory(){
+void createRoot(){
         int blockNumber = getFreeBlock();
         dEntry directory[2];
         directory[0].inode = 0;
@@ -140,25 +149,25 @@ void createRootDirectory(){
         writeInode(0,root);
         curINodeNumber = 0;
         strcpy(pwd,"/");
-}
+}//createRoot
 
 void initfs(char* file_name, int n1, int n2)
 {
-        printf("\n filesystem intialization started \n");
+        printf("\n Initializing FileSystem \n");
         total_inodes_count = n2;
         char emptyBlock[BLOCK_SIZE] = {0};
         int no_of_bytes,i,blockNumber,iNumber;
 
-        //init isize (Number of blocks for inode
+        //initialize number of blocks for inode
         if(((n2*INODE_SIZE)%BLOCK_SIZE) == 0) // 300*64 % 1024
                 super.isize = (n2*INODE_SIZE)/BLOCK_SIZE;
         else
                 super.isize = (n2*INODE_SIZE)/BLOCK_SIZE+1;
 
-        //init fsize
+        //initialize fsize
         super.fsize = n1;
 
-        //create file for File System
+        //create file for FileSystem
         if((fd = open(file_name,O_RDWR|O_CREAT,0600))== -1)
         {
                 printf("\n file opening error [%s]\n",strerror(errno));
@@ -166,12 +175,12 @@ void initfs(char* file_name, int n1, int n2)
         }
         strcpy(fileSystemPath,file_name);
 
-        writeToBlock(n1-1,emptyBlock,BLOCK_SIZE); // writing empty block to last block
+        writeToBlock(n1-1,emptyBlock,BLOCK_SIZE); // write empty block to last block
 
         // add all blocks to the free array
         super.nfree = 0;
         for (blockNumber= 1+super.isize; blockNumber< n1; blockNumber++)
-                addFreeBlock(blockNumber);
+                add_free_block(blockNumber);
 
         // add free Inodes to inode array
         super.ninode = 0;
@@ -192,14 +201,14 @@ void initfs(char* file_name, int n1, int n2)
         for (i=1; i <= super.isize; i++)
                 writeToBlock(i,emptyBlock,BLOCK_SIZE);
 
-        createRootDirectory();
-}
+        createRoot();
+}//initfs
 
 void quit()
 {
         close(fd);
         exit(0);
-}
+}//quit
 
 // The main function
 int main(){
