@@ -14,7 +14,7 @@
 #define BLOCK_SIZE 1024
 #define INODE_SIZE 64
 #define MAX_FILE_SIZE 4194304 // 4GB of file size
-#define FREE_ARRAY_SIZE 248 // free and inode array size
+#define FREE_ARRAY_SIZE 200 // free and inode array size
 
 typedef struct {
     unsigned int isize; // 4 byte
@@ -35,7 +35,7 @@ typedef struct {
     char uid;
     char gid;
     unsigned int size; // 32bits  2^32 = 4GB filesize
-    unsigned short addr[22]; // to make total size = 64 byte inode size
+    unsigned short addr[9]; // to make total size = 64 byte inode size
     unsigned int actime;
     unsigned int modtime;
 } Inode;
@@ -43,7 +43,7 @@ typedef struct {
 typedef struct
 {
     unsigned short inode;
-    char filename[14];
+    char filename[28];
 }dEntry;
 
 super_block super;
@@ -99,6 +99,21 @@ void fill_an_inode_and_write(int inum){
 void writeToBlock(int blockNumber, void * buffer, int nbytes){
         lseek(fd,BLOCK_SIZE * blockNumber, SEEK_SET);
         write(fd,buffer,nbytes);
+}
+
+int add_free_block(int bNumber){
+    int pass = 1;
+    if(super.nfree == FREE_ARRAY_SIZE){
+        lseek(fd, BLOCK_SIZE * bNumber, SEEK_SET);
+        write(fd, super.free,FREE_ARRAY_SIZE * 2);
+        super.nfree = 0;
+    }
+    super.free[super.nfree] = bNumber;
+    super.nfree++;
+    if(super.nfree > FREE_ARRAY_SIZE){
+        pass = -1;
+    }
+    return pass;
 }
 
 void createRootDirectory(){
@@ -185,22 +200,6 @@ void quit()
         close(fd);
         exit(0);
 }
-
-int add_free_block(int bNumber){
-    int pass = 1;
-    if(super.nfree == FREE_ARRAY_SIZE){
-        lseek(fd, BLOCK_SIZE * bNumber, SEEK_SET);
-        write(fd, super.free,FREE_ARRAY_SIZE * 2);
-        super.nfree = 0;
-    }
-    super.free[super.nfree] = bNumber;
-    super.nfree++;
-    if(super.nfree > FREE_ARRAY_SIZE){
-        pass = -1;
-    }
-    return pass;
-}
-
 
 // The main function
 int main(){
