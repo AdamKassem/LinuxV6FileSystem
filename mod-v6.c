@@ -214,7 +214,7 @@ void createRootDirectory()
     direc[0].inode = 1;//1st inode = root directory
     strcpy(direc[0].filename, ".");
 
-    direc[1].inode = 1;//1st node = parent
+    direc[1].inode = 1;//2nd node = parent
     strcpy(direc[1].filename, "..");
 
 
