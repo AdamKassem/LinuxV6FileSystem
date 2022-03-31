@@ -186,6 +186,21 @@ void quit()
         exit(0);
 }
 
+int add_free_block(int bNumber){
+    int pass = 1;
+    if(super.nfree == FREE_ARRAY_SIZE){
+        lseek(fd, BLOCK_SIZE * bNumber, SEEK_SET);
+        write(fd, super.free,FREE_ARRAY_SIZE * 2);
+        super.nfree = 0;
+    }
+    super.free[super.nfree] = bNumber;
+    super.nfree++;
+    if(super.nfree > FREE_ARRAY_SIZE){
+        pass = -1;
+    }
+    return pass;
+}
+
 
 // The main function
 int main(){
