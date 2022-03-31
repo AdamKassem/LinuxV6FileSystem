@@ -2,10 +2,10 @@
 *  March 31, 2022
 * 
 * Part 1 contributions:
-* Basma Mahamid : get_free_block,  partialy main logic
+* Basma Mahamid : get_free_block,  main function
 * 
-* XX :  
-* XX:  
+* Adham Kassem: initfs
+* Dhruv Thoutireddy:  add_free_block
 *
 * How to run:
 * when execture the use can give two command
@@ -157,7 +157,7 @@ void initfs(const char* path, int total_blocks, int total_inode_blocks)
         nodeX.flags = INODE_FREE; // set inodes to free
         write(fd, &nodeX, INODE_SIZE);//write inode to block
     }
-
+    
     return;
 }
 
@@ -183,11 +183,7 @@ int add_free_block(int bNumber)
 
 
 int get_free_block(void) {
-
-    
-
     if (super.nfree > 0) {
-        
         super.nfree -= 1;
          lseek(fd, BLOCK_SIZE, SEEK_SET);//find super
          write(fd, &super, BLOCK_SIZE);//update nfree in super
@@ -196,7 +192,6 @@ int get_free_block(void) {
     else {
         return -1;
     }
-
 }
 
 
@@ -269,8 +264,6 @@ void allocateBlocks(void) {
     super.nfree = unallocatedBlocks;
 
     return;
-
-
 }
 
 
