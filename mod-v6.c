@@ -1,9 +1,7 @@
 /* Project 2 - Part 1
-*  March 31, 2022
 * 
 * Part 1 contributions:
 * Basma Mahamid : get_free_block,  main function
-* 
 * Adham Kassem: initfs
 * Dhruv Thoutireddy:  add_free_block
 *
@@ -32,17 +30,16 @@
 #define FREE_ARRAY_SIZE 200 // free and inode array size
 #define MAX_NFREE 199
 
-#define INODE_ALLOC 0x8000 //A = 1 : I-node is allocated
+#define INODE_ALLOC 0x8000 // A = 1 : INode is being used
 #define INODE_FREE 0x0000  // A = 0: I-node is free
 #define DIREC_FILE 0x4000 // BC = 10: directory file
 
 
-/*filesystem structure/ superblock reserved for system
-each i node depends on the size of the file*/
+/*filesystem structure/ superblock reserved for system*/
 typedef struct {
-    unsigned int isize; // 4 byte
-    unsigned int fsize;
-    unsigned int nfree;
+    unsigned int isize; //num of inode blocks
+    unsigned int fsize; //filesystem size
+    unsigned int nfree; //number of free blocks
     unsigned int free[FREE_ARRAY_SIZE];
     unsigned short flock;
     unsigned short ilock;
@@ -50,13 +47,13 @@ typedef struct {
     unsigned int time;
 } super_type;
 
-/*defining structure and attributes of the files*/
+/*defining structure and attributes for inode*/
 typedef struct {
     unsigned short flags;
     unsigned short nlinks;
     unsigned int uid;
     unsigned int gid;
-    //added both size0 and size1 in the case of potentially storing larger files
+    //both size0 and size1 combined in the case of storing very large files (>4GB)
     unsigned int size0; 
     unsigned int size1; 
     unsigned int addr[9];
@@ -82,15 +79,15 @@ void allocateBlocks(void);
 void createRootDirectory();
  
 /*initfs() initializes the file system
-it passes: the name of the filesystem, the size of the file system size/ total num of blocks,
+it passes: the name of the file used to store the filesystem data, 
+the size of the file system in blocks,
 and the num of i-node blocks*/
 void initfs(const char* path, int total_blocks, int total_inode_blocks)
 {
-
+    //open the file with Read/Write permissions
     fd = open(path, O_RDWR);
     
-    //checks if the file is not in system 
-    //then create and open the file with Read/Write permissions
+    //checks if the file is not in system then create file
     if (fd == -1) {
 
         fd = open(path, O_CREAT | O_RDWR, 0600);
@@ -99,7 +96,7 @@ void initfs(const char* path, int total_blocks, int total_inode_blocks)
     else {
         
         //if the file exists in the system it will open 
-        //and create a superblock with that filesystem
+        //and read the superblock from the file
         printf("File opened\n");
         
         lseek(fd, BLOCK_SIZE, SEEK_SET);
@@ -122,20 +119,22 @@ void initfs(const char* path, int total_blocks, int total_inode_blocks)
     lseek(fd, BLOCK_SIZE, SEEK_SET);
     write(fd, &super, BLOCK_SIZE);
 
-    //creating/rewriting root directory for the first i-node only
+    //creating root directory for the first i-node only
     createRootDirectory();
 
     //finding total num. of i-nodes in system
     int num_inodes = (BLOCK_SIZE / INODE_SIZE) * super.isize;
     int totalBytes;
-    //setting other inodes to free except first one
+   
+    //calculating the offset where the second node needs to be written
     totalBytes = (2 * BLOCK_SIZE) + INODE_SIZE; 
     lseek(fd, totalBytes, SEEK_SET);
-
+    
+    //write all data about inodes to filesystem after the superblock block (starting from 3rd block)
     for (x = 2; x <= num_inodes; x++) {
         inode_type nodeX;
         nodeX.flags = INODE_FREE; //setting inodes to free
-        write(fd, &nodeX, INODE_SIZE); //write all data about inodes to the block
+        write(fd, &nodeX, INODE_SIZE); 
     }
     
     return;
@@ -163,8 +162,8 @@ int add_free_block(int bNumber)
     write(fd, &super, BLOCK_SIZE);
 }
 
-/*if there are any free blocks found (>0) the superblock will be rewritten, nfree will
-be updated, and the address of a free data block from the free array will be returned
+/*if there are any free blocks found (>0) the the address of a free data block 
+from the free array will be returned
 in case of an error/if there are no free blocks left, -1 will be returned*/
 
 int get_free_block(void) {
@@ -179,7 +178,7 @@ int get_free_block(void) {
     }
 }
 
-
+//creates root directory with the two entries . and ..
 void createRootDirectory()
 {
     inode_type rootDir;
@@ -197,7 +196,7 @@ void createRootDirectory()
     direc[0].inode = 1;//1st inode = root directory
     strcpy(direc[0].filename, ".");
 
-    direc[1].inode = 1;//2nd node = parent
+    direc[1].inode = 1;//2nd inode = parent
     strcpy(direc[1].filename, "..");
 
    //sets all other nodes to free
@@ -206,7 +205,7 @@ void createRootDirectory()
     }
 
 
-    // inode struct
+    // inode struct for root directory
     rootDir.flags = (INODE_ALLOC | DIREC_FILE); // I-node allocated + directory file
     rootDir.nlinks = 1;
     rootDir.uid = 0;
@@ -246,7 +245,6 @@ void allocateBlocks(void) {
         super.free[i] = blockIdx;
         blockIdx += 1;
     }
-    //sets free array in superblock = total num. of free blocks
     super.nfree = unallocatedBlocks; 
 
     return;
