@@ -51,7 +51,8 @@
 
 
 
-
+/*filesystem structure/ superblock reserved for system
+each i node depends on the size of the file*/
 typedef struct {
     unsigned int isize; // 4 byte
     unsigned int fsize;
@@ -63,13 +64,15 @@ typedef struct {
     unsigned int time;
 } super_type;
 
+/*defining structure and attributes of the files*/
 typedef struct {
     unsigned short flags;
     unsigned short nlinks;
     unsigned int uid;
     unsigned int gid;
-    unsigned int size0;
-    unsigned int size1;
+    //added both size0 and size1 in the case of potentially storing larger files
+    unsigned int size0; 
+    unsigned int size1; 
     unsigned int addr[9];
     unsigned int actime;
     unsigned int modtime;
@@ -101,61 +104,65 @@ void createRootDirectory();
  
 
  
-
+/*initfs() initializes the file system
+it passes: the name of the filesystem, the size of the file system size/ total num of blocks,
+and the num of i-node blocks*/
 void initfs(const char* path, int total_blocks, int total_inode_blocks)
 {
 
-    // First open or create  filesystem
     fd = open(path, O_RDWR);
+    
+    //checks if the file is not in system 
+    //then create and open the file with Read/Write permissions
+    if (fd == -1) {
 
-    if (fd == -1) {//file is not in system
-
-        fd = open(path, O_CREAT | O_RDWR, 0600);// create file with R&W
+        fd = open(path, O_CREAT | O_RDWR, 0600);
         printf("File created and opened\n");
     }
     else {
-        printf("File opened\n");//file found
+        
+        //if the file exists in the system it will open 
+        //and create a superblock with that filesystem
+        printf("File opened\n");
 
-        //read in super
+        
         lseek(fd, BLOCK_SIZE, SEEK_SET);
         read(fd, &super, BLOCK_SIZE);
 
     }
 
     int x;
-    super.isize = total_inode_blocks; // total number of blocks for inode
-    super.fsize = total_blocks;// total blocks for system
-    //test
-
-    // defining variables of the super  ??? Ask prof
+    super.isize = total_inode_blocks; //num. of blocks reserved for the i-node
+    super.fsize = total_blocks; //total num. of blocks in the system
+  
     super.nfree = 0;
     super.flock = 0;
     super.ilock = 0;
     super.fmod = 0;
     super.time = time(NULL);
 
-    //set all blocks as free
+    //initializing all blocks to be free blocks
     allocateBlocks();
 
-    // writing the super block
+    //writing the super block
     lseek(fd, BLOCK_SIZE, SEEK_SET);
     write(fd, &super, BLOCK_SIZE);
 
 
-    // create root directory for the first inode
+    //creating/rewriting root directory for the first i-node only
     createRootDirectory();
 
-    // find number of inodes in system
+    //finding total num. of i-nodes in system
     int num_inodes = (BLOCK_SIZE / INODE_SIZE) * super.isize;
     int totalBytes;
-    // set other inodes to free
-    totalBytes = (2 * BLOCK_SIZE) + INODE_SIZE; //start from INODE 2  .  after blocks and super block
+    //setting other inodes to free except first one
+    totalBytes = (2 * BLOCK_SIZE) + INODE_SIZE; 
     lseek(fd, totalBytes, SEEK_SET);
 
     for (x = 2; x <= num_inodes; x++) {
         inode_type nodeX;
-        nodeX.flags = INODE_FREE; // set inodes to free
-        write(fd, &nodeX, INODE_SIZE);//write inode to block
+        nodeX.flags = INODE_FREE; //setting inodes to free
+        write(fd, &nodeX, INODE_SIZE); //write all data about inodes to the block
     }
     
     return;
@@ -171,23 +178,26 @@ void quit(void) {
     exit(0); //exit system
 }
 
-
+/*add_free_block() stores the number of the block that is no longer being used
+and adds it to the nfree array of free blocks to be used later*/
 int add_free_block(int bNumber)
 {
     
-    super.free[super.nfree] = bNumber;                  // updating the free array with the new block
+    super.free[super.nfree] = bNumber;                  
     super.nfree++;
-    lseek(fd, BLOCK_SIZE, SEEK_SET);//find superblock
-    write(fd, &super, BLOCK_SIZE);//update nfree in superblock
+    lseek(fd, BLOCK_SIZE, SEEK_SET);
+    write(fd, &super, BLOCK_SIZE);
 }
 
-
+/*if there are any free blocks found (>0) the superblock will be rewritten, nfree will
+be updated, and the number of/ index of that free block from the free array will be returned
+in case of an error, -1 will be returned*/
 int get_free_block(void) {
     if (super.nfree > 0) {
         super.nfree -= 1;
-         lseek(fd, BLOCK_SIZE, SEEK_SET);//find super
-         write(fd, &super, BLOCK_SIZE);//update nfree in super
-         return super.free[super.nfree];//get free block from free array
+         lseek(fd, BLOCK_SIZE, SEEK_SET);
+         write(fd, &super, BLOCK_SIZE);
+         return super.free[super.nfree];
     }
     else {
         return -1;
@@ -251,17 +261,20 @@ void createRootDirectory()
 }
 
 
+/*this function allocates the free blocks
+and stores the index of the free blocks ???*/ 
 
 void allocateBlocks(void) {
     unsigned int blockIdx = super.isize + 2;//isize + super + Block0
     int unallocatedBlocks = super.fsize - blockIdx;//total data blocks
     unsigned int i;
-
-    for (i = 0; i < unallocatedBlocks && i < FREE_ARRAY_SIZE; i++) {//write to free array
+    
+    //writes free blocks to the free array
+    for (i = 0; i < unallocatedBlocks && i < FREE_ARRAY_SIZE; i++) {
         super.free[i] = blockIdx;
         blockIdx += 1;
     }
-    super.nfree = unallocatedBlocks;
+    super.nfree = unallocatedBlocks; //total num. of free blocks
 
     return;
 }
