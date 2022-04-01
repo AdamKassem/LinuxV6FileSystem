@@ -1,14 +1,14 @@
 /* Project 2 - Part 1
 * 
 * Part 1 contributions:
-* Basma Mahamid : get_free_block,  main function
-* Adham Kassem: initfs
-* Dhruv Thoutireddy:  add_free_block
+* Basma Mahamid : get_free_block, main function, processcommand function, createRootDirectory function, allocateblocks function, superblock struct.
+* Adham Kassem: initfs, root directory struct, and helped editing in other areas
+* Dhruv Thoutireddy: add_free_block, quit function, i-node struct, and helped editing in other areas
 *
 * How to run:
-* when execture the use can give two command
-* initfs file_name n1 n2  :  will initialie filesystem that will be stored in file_name with n1-block size and n2 blocks devoted to inodes
-* q                       : quit the program
+* when executed the user can input one of two commands:
+* initfs file_name n1 n2  :  will initialize filesystem that will be stored in file_name with n1-block size and n2 blocks devoted to inodes
+*                      q  : quit the program
 */
 
 #include <stdio.h>
