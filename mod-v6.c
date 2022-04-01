@@ -13,9 +13,6 @@
 * q                       : quit the program
 */
 
-
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -32,23 +29,12 @@
 #define INODE_SIZE 64
 #define DIR_SIZE 32
 
-
-
-
 #define FREE_ARRAY_SIZE 200 // free and inode array size
 #define MAX_NFREE 199
-
-
 
 #define INODE_ALLOC 0x8000 //A = 1 : I-node is allocated
 #define INODE_FREE 0x0000  // A = 0: I-node is free
 #define DIREC_FILE 0x4000 // BC = 10: directory file
-
-
-
-
-
-
 
 
 /*filesystem structure/ superblock reserved for system
@@ -78,17 +64,13 @@ typedef struct {
     unsigned int modtime;
 } inode_type;
 
-
 typedef struct {
     unsigned int inode;
     char filename[28];
 } dir_type;  //32 Bytes long
 
 inode_type root;
-
 super_type super;
-
- 
 
 int fd;
 char pwd[100];
@@ -96,13 +78,8 @@ int curINodeNumber;
 char fileSystemPath[100];
 int total_inodes_count;
 
- 
 void allocateBlocks(void);
 void createRootDirectory();
-
-
- 
-
  
 /*initfs() initializes the file system
 it passes: the name of the filesystem, the size of the file system size/ total num of blocks,
@@ -124,17 +101,14 @@ void initfs(const char* path, int total_blocks, int total_inode_blocks)
         //if the file exists in the system it will open 
         //and create a superblock with that filesystem
         printf("File opened\n");
-
         
         lseek(fd, BLOCK_SIZE, SEEK_SET);
         read(fd, &super, BLOCK_SIZE);
-
     }
 
     int x;
     super.isize = total_inode_blocks; //num. of blocks reserved for the i-node
     super.fsize = total_blocks; //total num. of blocks in the system
-  
     super.nfree = 0;
     super.flock = 0;
     super.ilock = 0;
@@ -147,7 +121,6 @@ void initfs(const char* path, int total_blocks, int total_inode_blocks)
     //writing the super block
     lseek(fd, BLOCK_SIZE, SEEK_SET);
     write(fd, &super, BLOCK_SIZE);
-
 
     //creating/rewriting root directory for the first i-node only
     createRootDirectory();
@@ -168,21 +141,22 @@ void initfs(const char* path, int total_blocks, int total_inode_blocks)
     return;
 }
 
+//quits program when user enters 'q' as a command input (prompted in main())
 void quit(void) {
     if (super.fsize > 0 && super.isize > 0) {
-        super.time = time(NULL);//update super block access time
+        super.time = time(NULL);
         lseek(fd, BLOCK_SIZE, SEEK_SET);
         write(fd, &super, BLOCK_SIZE);
     }
 
-    exit(0); //exit system
+    exit(0); 
 }
 
-/*add_free_block() stores the number of the block that is no longer being used
-and adds it to the nfree array of free blocks to be used later*/
+/*add_free_block() takes the address of the block that is no longer being used
+and adds it to the free array of free blocks to be used later*/
+
 int add_free_block(int bNumber)
 {
-    
     super.free[super.nfree] = bNumber;                  
     super.nfree++;
     lseek(fd, BLOCK_SIZE, SEEK_SET);
@@ -190,8 +164,9 @@ int add_free_block(int bNumber)
 }
 
 /*if there are any free blocks found (>0) the superblock will be rewritten, nfree will
-be updated, and the number of/ index of that free block from the free array will be returned
-in case of an error, -1 will be returned*/
+be updated, and the address of a free data block from the free array will be returned
+in case of an error/if there are no free blocks left, -1 will be returned*/
+
 int get_free_block(void) {
     if (super.nfree > 0) {
         super.nfree -= 1;
@@ -203,8 +178,6 @@ int get_free_block(void) {
         return -1;
     }
 }
-
-
 
 
 void createRootDirectory()
@@ -227,9 +200,8 @@ void createRootDirectory()
     direc[1].inode = 1;//2nd node = parent
     strcpy(direc[1].filename, "..");
 
-
-
-    for (i = 2; i < 16; i++) {//set rest of nodes to free
+   //sets all other nodes to free
+    for (i = 2; i < 16; i++) {
         direc[i].inode = 0;
     }
 
@@ -248,7 +220,7 @@ void createRootDirectory()
     rootDir.size0 = (int)((writeBytes & 0xFFFFFFFF00000000) >> 32); // high 64 bit
     rootDir.size1 = (int)(writeBytes & 0x00000000FFFFFFFF); // low 64 bit
 
-    //write inode to inode block
+    //writing inodes to inode block
     totalBytes = (2 * BLOCK_SIZE);
     lseek(fd, totalBytes, SEEK_SET);
     write(fd, &rootDir, INODE_SIZE);
@@ -262,11 +234,11 @@ void createRootDirectory()
 
 
 /*this function allocates the free blocks
-and stores the index of the free blocks ???*/ 
+and stores the index of the free blocks and updates size array of free blocks in superblock*/ 
 
 void allocateBlocks(void) {
-    unsigned int blockIdx = super.isize + 2;//isize + super + Block0
-    int unallocatedBlocks = super.fsize - blockIdx;//total data blocks
+    unsigned int blockIdx = super.isize + 2;
+    int unallocatedBlocks = super.fsize - blockIdx; //total number of blocks
     unsigned int i;
     
     //writes free blocks to the free array
@@ -274,17 +246,21 @@ void allocateBlocks(void) {
         super.free[i] = blockIdx;
         blockIdx += 1;
     }
-    super.nfree = unallocatedBlocks; //total num. of free blocks
+    //sets free array in superblock = total num. of free blocks
+    super.nfree = unallocatedBlocks; 
 
     return;
 }
 
 
+/*processes command given by user (currently only initfs and quit are implemented)
+if command inputted is not one of these two commands or initfs is not written with valid/correct number of arguments
+.. error message will appear: invalid command*/
 
 void ProcessCommand(char* command) {
 
     char* token;
-    char* args[5] = { NULL };  // spliced arguments
+    char* args[5] = { NULL }; 
     // command
     token = strtok(command, " ");
     args[0] = token;
@@ -301,7 +277,6 @@ void ProcessCommand(char* command) {
                 printf("same file system will be used\n");
                 return;
             }
-
 
             args[1] = strtok(NULL, " ");// file system size in # blocks
             args[2] = strtok(NULL, "\n");// # nodes for i-nodes
@@ -352,8 +327,6 @@ void ProcessCommand(char* command) {
         else {
             printf("Invalid Command\n");
         }
-
-       
     }
     else {
         printf("Invalid Command\n");
@@ -362,19 +335,20 @@ void ProcessCommand(char* command) {
     return;
 }
 
+/*main function where command is taken from user input and sent to be processed..
+the current i-node will always be initialized back to 0 when the program is ran 
+in order to start at the root directory*/
 
 int main(void) {
     char command[512];
     fd = -1;
-    curINodeNumber = 1; // start at the root directory;
+    curINodeNumber = 1;
 
     while (1) {
         printf("Enter command:");
-        fgets(command, sizeof(command), stdin); //get command from console
-        ProcessCommand(command);//find modv6 command
-
+        fgets(command, sizeof(command), stdin); 
+        ProcessCommand(command);
     }
-
+    
     return 0;
-
 }
