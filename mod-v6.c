@@ -1,14 +1,17 @@
 /* Project 2 - Part 2
 *
-* Part 1 contributions:
-* Basma Mahamid : get_free_block, main function, processcommand function, createRootDirectory function, allocateblocks function, superblock struct.
-* Adham Kassem: initfs, root directory struct, and helped editing in other areas
-* Dhruv Thoutireddy: add_free_block, quit function, i-node struct, and helped editing in other areas
+* Part 2 contributions:
+* Basma Mahamid : cpout, processcommand, IsSystemInitialized, updateInodeEntry, getFreeInode.
+* Adham Kassem: cpin, getInode, and helped editing in other areas.
+* Dhruv Thoutireddy: rm, openfileS, and helped editing in other areas.
 *
 * How to run:
 * when executed the user can input one of two commands:
-* initfs file_name n1 n2  :  will initialize filesystem that will be stored in file_name with n1-block size and n2 blocks devoted to inodes
-*                      q  : quit the program
+*           initfs file_name n1 n2  :  initialize filesystem that will be stored in file_name with n1-block size and n2 blocks devoted to inodes
+*   cpin externalfile internalfile  :  creates a new file called internalfile in the v6 file system and fill the contents of the newly created file with the contents of the externalfile
+* cpout sourcefile destinationfile  :  creates destinationfile and make the destinationfile's contents equal to sourcefile
+*                       rm v6-file  :  deletes the file v6_file from the v6 file system and removes all the data blocks of the file, frees the i-node and removes the directory entry
+*                                q  :  quit the program
 */
 
 #include <stdio.h>
@@ -83,12 +86,15 @@ typedef struct {
 } dir_type;  //32 Bytes long
 
 
-
+//global variables
 super_type SuperBlock;
 int FileHandler;
 int currentInode;
 char currentFilepath[200];
+inode_type rootDir;
 
+//Prototypes
+int openfileS(char *file);
 void allocateBlocks(void);
 void createRootDirectory();
 void initfs(const char* path, int nblocks, int nBlockforInode);
@@ -160,7 +166,7 @@ void initfs(const char* path, int nblocks, int nBlockforInode)
     return;
 }
 
-
+//returns inode_type variable based on inode index
 inode_type getInode(unsigned int nINode) {
 
     inode_type inode;
@@ -172,6 +178,9 @@ inode_type getInode(unsigned int nINode) {
     return inode;
 }
 
+/*deletes the file v6_file from the v6 file system
+and removes all the data blocks of the file, frees the i-node
+and removes the directory entry*/
 void rm(char* filename) {
 
     int i, j;
@@ -285,7 +294,7 @@ void quit(void) {
     exit(0);
 }
 
-
+// Check for system and file initialization
 int IsSystemInitialized(void) {
 
     // Check if a file is opened
@@ -364,7 +373,7 @@ int get_free_block(void) {
 //creates root directory with the two entries . and ..
 void createRootDirectory()
 {
-    inode_type rootDir;
+    //inode_type rootDir; ##########
     dir_type direc[16];
     int freeBlock;
     int totalBytes;
@@ -636,6 +645,20 @@ void ProcessCommand(char* command) {
         else if ((strcmp(args[0], "q\n") == 0)) {
             quit();
         }
+        else if(strcmp(args[0], "openfs") == 0){
+            args[1] = strtok(NULL, "\n");
+            if(args[1] == NULL){
+                printf("Invalid Command\n");
+            }
+            else{
+                if(openfileS(args[1]) == 1){
+                    printf("File opened\n");
+                }
+                else{
+                    printf("error occurred");
+                }
+            }
+        }
         else {
             printf("Invalid Command\n");
         }
@@ -647,6 +670,7 @@ void ProcessCommand(char* command) {
     return;
 }
 
+//returns index of free inode
 int getFreeInode(void) {
     int x;
     int num_inodes = (BLOCK_SIZE / INODE_SIZE) * SuperBlock.isize;
@@ -668,7 +692,9 @@ int getFreeInode(void) {
 }
 
 
-
+/*if there are any free blocks found (>0) the the address of a free data block
+from the free array will be returned
+in case of an error/if there are no free blocks left, -1 will be returned*/
 int getFreeBlock(void) {
     SuperBlock.nfree -= 1;//get next free block from free array
 
@@ -746,7 +772,7 @@ int findDirectory(char* dir_name, int parentNode) {
     return fpFound;
 }
 
-
+//creates destinationfile and make the destinationfile's contents equal to sourcefile
 void cpout(char* sourceFile, char* destinationFile) {
     inode_type node;
     int i, j;
@@ -850,7 +876,8 @@ void cpout(char* sourceFile, char* destinationFile) {
 }
 
 
-
+/*takes the address of the block that is no longer being used
+and adds it to the free array of free blocks to be used later*/
 void addFreeBlock(unsigned int block) {
     if (SuperBlock.nfree == MAX_NFREE) {                   // if the free array is full, store the free blocks in a new block
         lseek(FileHandler, BLOCK_SIZE * block, SEEK_SET);
@@ -864,6 +891,7 @@ void addFreeBlock(unsigned int block) {
     write(FileHandler, &SuperBlock, BLOCK_SIZE);//update nfree in superblock
 }
 
+//adds new file directory entry and updates inodes
 int addNewFileDirectoryEntry(int parentInodeNum, dir_type newDir) {
     inode_type parentNode;
 
@@ -952,7 +980,17 @@ int addNewFileDirectoryEntry(int parentInodeNum, dir_type newDir) {
 
 }
 
+//opens file system
+int openfileS(char *file){
+    FileHandler = open(file,2);
+    lseek(FileHandler, BLOCK_SIZE, SEEK_SET);
+    read(FileHandler, & SuperBlock,sizeof(SuperBlock));
+    lseek(FileHandler, 2 * BLOCK_SIZE, SEEK_SET);
+    read(FileHandler, & rootDir,sizeof(rootDir));
+    return 1;
+}
 
+//updates inode index entry with new inode data
 void updateInodeEntry(int addBytes, int inodeNum, inode_type newNode) {
 
     unsigned long long size = ((newNode.size0 << 32) | newNode.size1); //find directory size
@@ -968,7 +1006,8 @@ void updateInodeEntry(int addBytes, int inodeNum, inode_type newNode) {
 }
 
 
-
+/*creates a new file called internalfile in the v6 file system
+and fill the contents of the newly created file with the contents of the externalfile*/
 int cpin(char* externalFile, char* internalFile) {
 
     //get length of external file
