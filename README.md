@@ -57,3 +57,29 @@ should there be an error somewhere (say no free blocks left).
 This project must be done in C/C++ only.
 Check the program I uploaded on elearning and use that as a starting point.
 Due date: March 31, 2022 11:59 pm.
+
+
+# Part 2
+You need to implement the following additional commands and add to the project 2-part 1:
+Keep in mind that all files in v6 file system that you need to deal with in this project part are in the
+root directory and there will be no subdirectories.
+(a) cpin externalfile v6-file
+Creat a new file called v6-file in the v6 file system and fill the contents of the newly created file
+with the contents of the externalfile.
+(b) cpout v6-file externalfile
+If the v6-file exists, create externalfile and make the externalfile's contents equal to v6-file.
+(c) rm v6-file
+Delete the file v6_file from the v6 file system.
+Remove all the data blocks of the file, free the i-node and remove the directory entry.
+(d) q
+Save all changes and quit.
+For example the following sequence:
+initfs mydisk 1000 100
+cpin success.c /f1
+cpin a.out /f2
+cpout /f2 a.out-copy
+cpout /f1 success
+is possible where f1 and f2 are is created in the directory / of the v6 file system and success.c and
+a.out are existing files in the native Unix machine where the modified program mod-v6.c is
+developed, compiled and executed.
+Due date: April 26, 2022 11:55 pm.
